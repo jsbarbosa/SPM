@@ -90,7 +90,8 @@ class IBW(object):
 
         im.save(label + ".png")
 
-name = input("File directory: ")
+if __name__ == '__main__':
+    name = input("File directory: ")
 
-ibw = IBW(name)
-ibw.generateFiles()
+    ibw = IBW(name)
+    ibw.generateFiles()
