@@ -1,8 +1,12 @@
 import os
+import sys
 import igor
+import ctypes
 import numpy as np
 import igor.binarywave as bw
-from PIL import Image, ImageFont, ImageDraw
+from PIL import Image, ImageFont, ImageDraw, ImageQt
+
+from threading import Thread
 
 from datetime import date
 from reportlab.pdfgen import canvas
@@ -13,6 +17,10 @@ from reportlab.lib.styles import getSampleStyleSheet
 
 import win_unicode_console
 win_unicode_console.enable()
+
+from PyQt5 import QtCore, QtGui, QtWidgets
+
+import images
 
 class IBW(object):
     def __init__(self, filename):
@@ -52,7 +60,24 @@ class IBW(object):
         canvas2.setLineWidth(.3)
         canvas2.setFont('Helvetica', 11)
 
-        canvas2.drawImage("Logo2.png", LEFT, HEIGHT - 3*cm, height = 2*cm, width = 6*cm, preserveAspectRatio = True, mask = 'auto')
+        # image = QtGui.QImage()
+        # image.load(":/logo2.png")
+        # newimg = image.convertToFormat(QtGui.QImage.Format_ARGB32)
+        #
+        # h, w = newimg.height(), newimg.width()
+        #
+        # data = np.zeros((h, w))
+        #
+        # for i in range(h):
+        #     for j in range(w):
+        #         val = newimg.pixel(j, i)
+        #         data[i, j] = val
+        # img = Image.fromarray(np.uint8(data))
+        # # Extract the first channel
+        # image = np.array(ptr, dtype = np.uint8).reshape(newimg.height(), newimg.width(), 4)[:,:,0].copy()
+        # print(image)
+
+        # canvas2.drawImage(img, LEFT, HEIGHT - 3*cm, height = 2*cm, width = 6*cm, preserveAspectRatio = True, mask = 'auto')
 
         canvas2.drawString(LEFT, 680, 'CENTRO DE MICROSCOPÍA')
         canvas2.drawString(LEFT, 660, 'UNIVERSIDAD DE LOS ANDES')
@@ -193,11 +218,109 @@ class IBW(object):
 
         im.save(label + ".png")
 
+class MainWindow(QtWidgets.QMainWindow):
+    def __init__(self, app = None):
+        QtWidgets.QMainWindow.__init__(self)
+
+        self.app = app
+
+        self.setFixedSize(600, 80)
+        self.setWindowTitle("Igor Extractor")
+        self.setTabShape(QtWidgets.QTabWidget.Rounded)
+        self.centralWidget = QtWidgets.QWidget(self)
+        self.setCentralWidget(self.centralWidget)
+
+        self.verticalLayout = QtWidgets.QVBoxLayout(self.centralWidget)
+        self.verticalLayout.setContentsMargins(11, 11, 11, 11)
+        self.verticalLayout.setSpacing(6)
+
+        self.frame1 = QtWidgets.QFrame()
+        self.horizontalLayout1 = QtWidgets.QHBoxLayout(self.frame1)
+        self.horizontalLayout1.setContentsMargins(0, 0, 0, 0)
+        self.horizontalLayout1.setSpacing(6)
+
+        self.label = QtWidgets.QLabel()
+        self.label.setText("Directory:")
+
+        self.lineEdit = QtWidgets.QLineEdit()
+        self.button = QtWidgets.QPushButton("Browse")
+
+        self.horizontalLayout1.addWidget(self.label)
+        self.horizontalLayout1.addWidget(self.lineEdit)
+        self.horizontalLayout1.addWidget(self.button)
+
+        self.verticalLayout.addWidget(self.frame1)
+
+        self.frame2 = QtWidgets.QFrame()
+        self.horizontalLayout2 = QtWidgets.QHBoxLayout(self.frame2)
+        self.horizontalLayout2.setContentsMargins(0, 0, 0, 0)
+        self.horizontalLayout2.setSpacing(6)
+        self.horizontalLayout2.setAlignment(QtCore.Qt.AlignRight)
+
+        self.g_button = QtWidgets.QPushButton("Extract")
+        self.g_button.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout2.addWidget(self.g_button)
+
+        self.verticalLayout.addWidget(self.frame2)
+
+        self.directory = os.path.expanduser("~")
+
+        self.button.clicked.connect(self.open)
+        self.g_button.clicked.connect(self.extract)
+
+    def open(self):
+        dlg = QtWidgets.QFileDialog(directory = self.directory)
+
+        dlg.setAcceptMode(QtWidgets.QFileDialog.AcceptOpen)
+        dlg.setFileMode(QtWidgets.QFileDialog.ExistingFile)
+        dlg.setNameFilters(["Igor files (*.ibw)"])
+        if dlg.exec_():
+            name = dlg.selectedFiles()[0]
+            self.lineEdit.setText(name)
+            self.directory = os.path.abspath(os.path.join(name, os.pardir))
+
+    def extract(self):
+        loc = self.lineEdit.text()
+        try:
+            ibw = IBW(loc)
+            thread = Thread(target = self.threadFunc, args = (ibw,))
+            thread.start()
+        except Exception as e:
+            error_text = str(e)
+            msg = QtWidgets.QMessageBox()
+            msg.setIcon(QtWidgets.QMessageBox.Warning)
+            msg.setText('An Error has ocurred.\n%s'%error_text)
+            msg.setWindowTitle("Error")
+            msg.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+            msg.exec_()
+
+    def threadFunc(self, ibw):
+        if self.app != None:
+            self.app.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
+
+        self.g_button.setEnabled(False)
+        ibw.generateFiles()
+        self.g_button.setEnabled(True)
+
+        if self.app != None:
+            self.app.restoreOverrideCursor()
+
 def getName():
     return input("File directory: ")
 
 if __name__ == '__main__':
-    name = getName()
+    app = QtWidgets.QApplication(sys.argv)
+    icon = QtGui.QIcon(':/icon.ico')
+    app.setWindowIcon(icon)
+    app.processEvents()
+    myappid = 'extractor.extractor.01' # arbitrary string
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
-    ibw = IBW(name)
-    ibw.generateFiles()
+    main = MainWindow(app)
+    main.setWindowIcon(icon)
+    main.show()
+    app.exec_()
+    # name = getName()
+    #
+    # ibw = IBW(name)
+    # ibw.generateFiles()
