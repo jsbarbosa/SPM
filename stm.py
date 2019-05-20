@@ -15,8 +15,9 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import Paragraph, Table #Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 
-import win_unicode_console
-win_unicode_console.enable()
+if sys.platform == 'win32':
+    import win_unicode_console
+    win_unicode_console.enable()
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -313,8 +314,9 @@ if __name__ == '__main__':
     icon = QtGui.QIcon(':/icon.ico')
     app.setWindowIcon(icon)
     app.processEvents()
-    myappid = 'extractor.extractor.01' # arbitrary string
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    if sys.platform == 'win32':
+        myappid = 'extractor.extractor.01' # arbitrary string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     main = MainWindow(app)
     main.setWindowIcon(icon)
