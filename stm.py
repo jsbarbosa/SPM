@@ -169,21 +169,23 @@ class IBW(object):
         scale = float(params.splitlines()[0].split(":")[1])
 
         old_cwd = os.getcwd()
-        os.chdir(os.path.join(old_cwd, folder))
+        try:
+            os.chdir(os.path.join(old_cwd, folder))
 
-        params_name = "parameters." + parameters_extension
+            params_name = "parameters." + parameters_extension
 
-        print("Saving parameters...")
-        with open(params_name, "w") as file: file.write(params)
+            print("Saving parameters...")
+            with open(params_name, "w") as file: file.write(params)
 
-        for (i, label) in enumerate(labels):
-            d = data[:, :, i]
-            print("Saving %s plot..."%label)
-            self.plotData(d, label, scale)
-            d_name = label + "." + data_extension
-            print("Saving %s data..."%label)
-            np.savetxt(d_name, d, delimiter=',', newline='\n', fmt = '%.8e')
-
+            for (i, label) in enumerate(labels):
+                d = data[:, :, i]
+                print("Saving %s plot..."%label)
+                self.plotData(d, label, scale)
+                d_name = label + "." + data_extension
+                print("Saving %s data..."%label)
+                np.savetxt(d_name, d, delimiter=',', newline='\n', fmt = '%.8e')
+        except:
+            pass
         os.chdir(old_cwd)
 
         print("Saving PDF report...")
